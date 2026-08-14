@@ -12,3 +12,4 @@ output/
 *.mp4
 *.m4a
 "@ | Out-File -Encoding utf8 .gitignore
+vector_db/
