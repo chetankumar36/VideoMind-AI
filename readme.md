@@ -773,10 +773,9 @@ GitHub: [github.com/chetankumar36/VideoMind-AI](https://github.com/chetankumar36
 
 ---
 
-## 📜 License
+## 📜 Author
 
-Add your preferred license before distributing the project publicly (e.g. MIT License).
-
+Chetan Kumar N k
 ---
 
 ## 🙌 Acknowledgements
