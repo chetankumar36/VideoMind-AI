@@ -775,7 +775,8 @@ GitHub: [github.com/chetankumar36/VideoMind-AI](https://github.com/chetankumar36
 
 ## 📜 Author
 
-Chetan Kumar N k
+**Chetan Kumar N k**
+
 ---
 
 ## 🙌 Acknowledgements
