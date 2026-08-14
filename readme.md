@@ -2,11 +2,35 @@
 
 ### AI-Powered Video & Meeting Intelligence Assistant
 
-VideoMind AI is an AI-powered video and meeting assistant built with Python.
+VideoMind AI is an AI-powered video and meeting assistant built with Python. It transforms YouTube videos and uploaded audio/video files into structured, searchable knowledge.
 
-It transforms YouTube videos and uploaded audio/video files into structured, searchable knowledge. The application can extract audio, transcribe speech locally using Whisper, translate Hinglish/Hindi speech into English using Sarvam AI, summarize the content using Mistral, extract action items, key decisions and open questions, and provide an interactive RAG-based chat interface for asking questions about the processed meeting.
+The application can extract audio, transcribe speech locally using Whisper, translate Hinglish/Hindi speech into English using Sarvam AI, summarize the content using Mistral, extract action items, key decisions and open questions, and provide an interactive RAG-based chat interface for asking questions about the processed meeting.
 
-The application is built with **Python, Streamlit, Whisper, Sarvam AI, LangChain, Mistral, ChromaDB and HuggingFace embeddings**.
+Built with **Python, Streamlit, Whisper, Sarvam AI, LangChain, Mistral, ChromaDB and HuggingFace embeddings**.
+
+---
+
+## Table of Contents
+
+- [Features](#-features)
+- [System Architecture](#️-system-architecture)
+- [Project Structure](#-project-structure)
+- [File Responsibilities](#-file-responsibilities)
+- [Technology Stack](#️-technology-stack)
+- [Requirements](#️-requirements)
+- [Installation](#-installation)
+- [Environment Variables](#-environment-variables)
+- [Running VideoMind AI](#️-running-videomind-ai)
+- [Running the CLI Pipeline](#-running-the-cli-pipeline)
+- [Testing](#-testing)
+- [Configuration Reference](#-configuration-reference)
+- [Generated Files](#-generated-files)
+- [Troubleshooting](#-troubleshooting)
+- [Why RAG?](#-why-rag)
+- [Future Improvements](#-future-improvements)
+- [Project Status](#-current-project-status)
+- [License](#-license)
+- [Acknowledgements](#-acknowledgements)
 
 ---
 
@@ -22,15 +46,9 @@ Provide a YouTube URL and VideoMind AI will:
 4. Split long audio into manageable chunks
 5. Send the chunks through the selected transcription pipeline
 
----
-
 ### 📁 Local File Processing
 
-VideoMind AI can also process local audio/video files.
-
-Supported input depends on the FFmpeg/PyDub codecs available on the system.
-
-Typical formats include:
+VideoMind AI can also process local audio/video files. Supported input depends on the FFmpeg/PyDub codecs available on the system. Typical formats include:
 
 - WAV
 - MP3
@@ -39,327 +57,240 @@ Typical formats include:
 - WebM
 - Other FFmpeg-supported formats
 
----
-
 ### 🎙️ Local Whisper Transcription
 
 For English transcription, VideoMind AI uses OpenAI Whisper locally.
 
-```text
-Audio
-  ↓
-Whisper
-  ↓
-English Transcript
-
+```
+Audio → Whisper → English Transcript
+```
 
 The Whisper model can be configured using:
 
+```env
 WHISPER_MODEL=small
+```
 
-Available Whisper model choices include:
+Available Whisper model choices include: `tiny`, `base`, `small`, `medium`, `large`.
 
-tiny
-base
-small
-medium
-large
+> Larger models generally provide better transcription quality but require more RAM/CPU/GPU resources.
 
-Larger models generally provide better transcription quality but require more RAM/CPU/GPU resources.
+### 🌐 Hinglish / Hindi → English
 
-🌐 Hinglish / Hindi → English
+For Hinglish transcription and translation, VideoMind AI uses Sarvam AI's Speech-to-Text Translate API. The application sends short audio pieces to the API and receives an English transcript.
 
-For Hinglish transcription and translation, VideoMind AI uses Sarvam AI's Speech-to-Text Translate API.
+The current implementation uses `saaras:v2.5`. Audio is split into 25-second pieces before being sent to Sarvam because the synchronous API has a 30-second audio limitation.
 
-The application sends short audio pieces to the API and receives an English transcript.
+```
+Hinglish / Hindi Audio → 25-second audio pieces → Sarvam AI → English Transcript
+```
 
-The current implementation uses:
+### 🧠 AI Meeting Analysis
 
-saaras:v2.5
+After transcription, the transcript is processed using Mistral (`mistral-small-latest`) through LangChain for:
 
-The audio is split into 25-second pieces before being sent to Sarvam because the synchronous API has a 30-second audio limitation.
+- Meeting title generation
+- Meeting summarization
+- Action-item extraction
+- Key-decision extraction
+- Open-question extraction
+- RAG question answering
 
-Pipeline:
+### 📋 Automatic Summary
 
-Hinglish / Hindi Audio
-        ↓
-25-second audio pieces
-        ↓
-Sarvam AI
-        ↓
-English Transcript
-🧠 AI Meeting Analysis
+VideoMind AI generates a professional meeting summary from the transcript. Long transcripts are split into smaller sections before summarization.
 
-After transcription, the transcript is processed using Mistral through LangChain.
-
-The application uses:
-
-mistral-small-latest
-
-Mistral is used for:
-
-Meeting title generation
-Meeting summarization
-Action-item extraction
-Key-decision extraction
-Open-question extraction
-RAG question answering
-📋 Automatic Summary
-
-VideoMind AI generates a professional meeting summary from the transcript.
-
-Long transcripts are split into smaller sections before summarization.
-
-Full Transcript
-      ↓
-Transcript Chunks
-      ↓
-Individual Summaries
-      ↓
-Combined Summary
-      ↓
-Final Meeting Summary
+```
+Full Transcript → Transcript Chunks → Individual Summaries → Combined Summary → Final Meeting Summary
+```
 
 This map-and-combine approach allows the application to handle transcripts that are too large to send to the LLM in one request.
 
-🏷️ Automatic Meeting Title
+### 🏷️ Automatic Meeting Title
 
-The application generates a short professional title from the transcript.
+The application generates a short professional title (≈8 words) from the transcript, e.g. *"Quarterly Product Planning Meeting."*
 
-For example:
+### ✅ Action Item Extraction
 
-Quarterly Product Planning Meeting
+VideoMind AI extracts actionable tasks from the meeting. For each action item it attempts to identify a **task description**, **owner**, and **deadline**.
 
-The title generation prompt limits the title to approximately 8 words.
-
-✅ Action Item Extraction
-
-VideoMind AI extracts actionable tasks from the meeting.
-
-For each action item it attempts to identify:
-
-Task description
-Owner
-Deadline
-
-Example:
-
+```
 1. Prepare the project report
    Owner: Rahul
    Deadline: Friday
 
-
 2. Contact the client
    Owner: Priya
    Deadline: Not specified
-🔑 Key Decision Extraction
+```
+
+### 🔑 Key Decision Extraction
 
 The system identifies important decisions made during the meeting.
 
-Example:
-
+```
 1. The project deadline was moved to March 15.
 2. The team decided to use PostgreSQL.
 3. The next client meeting will be held on Monday.
-❓ Open Questions
+```
+
+### ❓ Open Questions
 
 VideoMind AI also extracts unresolved questions and topics requiring follow-up.
 
-Example:
-
+```
 1. Who will handle the production deployment?
 2. What is the final budget?
 3. When will the client provide the required assets?
-🔎 RAG — Chat With Your Meeting
+```
 
-One of the main features of VideoMind AI is the ability to chat with the processed meeting transcript.
+### 🔎 RAG — Chat With Your Meeting
 
-The application uses a Retrieval-Augmented Generation (RAG) pipeline.
+One of the main features of VideoMind AI is the ability to chat with the processed meeting transcript using a Retrieval-Augmented Generation (RAG) pipeline.
 
-RAG Architecture
-Transcript
-    ↓
-Text Splitting
-    ↓
-Embeddings
-    ↓
-ChromaDB
-    ↓
-Similarity Search
-    ↓
-Relevant Transcript Chunks
-    ↓
-Mistral
-    ↓
-Answer
-🗄️ Vector Database
+**RAG Architecture**
 
-VideoMind AI uses ChromaDB as the local vector database.
+```
+Transcript → Text Splitting → Embeddings → ChromaDB → Similarity Search
+→ Relevant Transcript Chunks → Mistral → Answer
+```
 
-The transcript is split into chunks using:
+### 🗄️ Vector Database
 
-RecursiveCharacterTextSplitter
+VideoMind AI uses **ChromaDB** as the local vector database. The transcript is split into chunks using `RecursiveCharacterTextSplitter`.
 
-Current configuration:
+| Setting | Value |
+|---|---|
+| Chunk size | 500 characters |
+| Chunk overlap | 50 characters |
+| Embedding model | `all-MiniLM-L6-v2` (HuggingFace) |
+| Storage path | `vector_db/` |
 
-Chunk size:     500 characters
-Chunk overlap:   50 characters
+> The `vector_db/` directory is intentionally excluded from Git because it is generated application data.
 
-Each chunk is converted into an embedding using:
-
-all-MiniLM-L6-v2
-
-through HuggingFace embeddings.
-
-The vectors are stored locally in:
-
-vector_db/
-
-The vector_db/ directory is intentionally excluded from Git because it is generated application data.
-
-💬 Ask Questions About the Meeting
+### 💬 Ask Questions About the Meeting
 
 After processing a video, users can ask questions such as:
 
-What were the main topics discussed?
+- What were the main topics discussed?
+- What did Rahul agree to do?
+- What were the key decisions?
+- Who is responsible for the deployment?
+- What is the project deadline?
+- What problems were discussed?
+- What are the next steps?
+- Was a budget discussed?
 
+The RAG system retrieves relevant transcript sections and sends them to Mistral. The model is instructed to answer only from the retrieved meeting context. If the information cannot be found, it responds:
 
-What did Rahul agree to do?
+> *"I could not find this information in the meeting transcript."*
 
-
-What were the key decisions?
-
-
-Who is responsible for the deployment?
-
-
-What is the project deadline?
-
-
-What problems were discussed?
-
-
-What are the next steps?
-
-
-Was a budget discussed?
-
-The RAG system retrieves relevant transcript sections and sends them to Mistral.
-
-The model is instructed to answer only from the retrieved meeting context.
-
-If the information cannot be found, it responds:
-
-I could not find this information in the meeting transcript.
-🔗 LangChain LCEL
+### 🔗 LangChain LCEL
 
 VideoMind AI uses LangChain Expression Language (LCEL) to build the LLM and RAG pipelines.
 
-For example, the RAG pipeline conceptually follows:
+```
+Question → Retriever → Relevant Documents → Prompt → Mistral → Answer
+```
 
-Question
-   ↓
-Retriever
-   ↓
-Relevant Documents
-   ↓
-Prompt
-   ↓
-Mistral
-   ↓
-Answer
+Key LangChain components used:
 
-The project uses LangChain components including:
+- `ChatPromptTemplate`
+- `StrOutputParser`
+- `RunnablePassthrough`
+- `RunnableLambda`
+- Chroma retrievers
+- Mistral chat models
 
-ChatPromptTemplate
-StrOutputParser
-RunnablePassthrough
-RunnableLambda
-Chroma retrievers
-Mistral chat models
-🖥️ Streamlit Interface
+### 🖥️ Streamlit Interface
 
-The user interface is built using Streamlit.
+The UI is built using Streamlit and includes:
 
-The UI provides a graphical interface for interacting with the AI video assistant.
-
-The application includes:
-
-Video/URL input
-Language selection
-Processing status
-Transcript display
-AI-generated title
-Meeting summary
-Action items
-Key decisions
-Open questions
-RAG chat
-Export functionality
+- Video/URL input
+- Language selection
+- Processing status
+- Transcript display
+- AI-generated title
+- Meeting summary
+- Action items
+- Key decisions
+- Open questions
+- RAG chat
+- Export functionality
 
 The interface uses a custom dark-themed design with animated UI elements and cards.
 
-🏗️ System Architecture
+---
+
+## 🏗️ System Architecture
+
+```
                          VideoMind AI
                               │
              ┌────────────────┴────────────────┐
-             │                                 │
-       YouTube URL                         Local File
-             │                                 │
-             ▼                                 ▼
-          yt-dlp                           PyDub
-             │                                 │
-             └──────────────┬──────────────────┘
-                            ▼
-                       Audio / WAV
-                            │
-                            ▼
-                     Audio Chunking
-                            │
-                 ┌──────────┴──────────┐
-                 │                     │
-             English                Hinglish
-                 │                     │
-                 ▼                     ▼
-             Whisper              Sarvam AI
-                 │                     │
-                 └──────────┬──────────┘
-                            ▼
-                       Transcript
-                            │
-             ┌──────────────┼──────────────┐
-             │              │              │
-             ▼              ▼              ▼
-          Summary       Extraction       RAG
-             │              │              │
-             │        ┌─────┼─────┐        │
-             │        │     │     │        │
-             │     Actions Decisions Q's   │
-             │                              │
-             │                              ▼
-             │                          Embeddings
-             │                              │
-             │                           ChromaDB
-             │                              │
-             │                              ▼
-             │                         Similarity Search
-             │                              │
-             └──────────────┬───────────────┘
-                            ▼
-                          Mistral
-                            │
-                            ▼
-                       Streamlit UI
-                            │
-                            ▼
-                    User / Meeting Insights
-📂 Project Structure
+             │                                  │
+        YouTube URL                        Local File
+             │                                  │
+             ▼                                  ▼
+          yt-dlp                             PyDub
+             │                                  │
+             └──────────────┬───────────────────┘
+                             ▼
+                        Audio / WAV
+                             │
+                             ▼
+                      Audio Chunking
+                             │
+                 ┌───────────┴───────────┐
+                 │                       │
+              English                Hinglish
+                 │                       │
+                 ▼                       ▼
+              Whisper                Sarvam AI
+                 │                       │
+                 └───────────┬───────────┘
+                             ▼
+                        Transcript
+                             │
+             ┌───────────────┼───────────────┐
+             │                │               │
+             ▼                ▼               ▼
+          Summary         Extraction         RAG
+                              │                │
+                    ┌─────────┼─────────┐      │
+                    │         │         │      │
+                 Actions  Decisions  Questions  │
+                                                 ▼
+                                            Embeddings
+                                                 │
+                                                 ▼
+                                             ChromaDB
+                                                 │
+                                                 ▼
+                                        Similarity Search
+                             │                   │
+                             └─────────┬─────────┘
+                                       ▼
+                                    Mistral
+                                       │
+                                       ▼
+                                 Streamlit UI
+                                       │
+                                       ▼
+                          User / Meeting Insights
+```
+
+---
+
+## 📂 Project Structure
+
+```
 VideoMind-AI/
 │
 ├── app.py
 ├── main.py
 ├── test.py
-├── Requirements.txt
+├── requirements.txt
 ├── README.md
 ├── .gitignore
 │
@@ -372,25 +303,28 @@ VideoMind-AI/
 │
 └── utils/
     └── audio_processor.py
-📌 File Responsibilities
-app.py
+```
 
-Main Streamlit user interface.
+---
 
-Responsible for:
+## 📌 File Responsibilities
 
-UI
-Input handling
-Processing workflow
-Displaying transcript and AI results
-RAG chat
-User interaction
-main.py
+### `app.py`
+
+Main Streamlit user interface. Responsible for:
+
+- UI
+- Input handling
+- Processing workflow
+- Displaying transcript and AI results
+- RAG chat
+- User interaction
+
+### `main.py`
 
 CLI/application pipeline entry point.
 
-The main pipeline is:
-
+```
 source
    ↓
 process_input()
@@ -408,530 +342,354 @@ extract_key_decisions()
 extract_questions()
    ↓
 build_rag_chain()
-utils/audio_processor.py
+```
 
-Responsible for:
+### `utils/audio_processor.py`
 
-YouTube audio downloading
-Audio conversion
-WAV generation
-Audio normalization
-Audio chunking
+Responsible for YouTube audio downloading, audio conversion, WAV generation, audio normalization, and audio chunking.
 
-Main functions:
+Main functions: `download_youtube_audio()`, `convert_to_wav()`, `chunk_audio()`, `process_input()`
 
-download_youtube_audio()
-convert_to_wav()
-chunk_audio()
-process_input()
-core/transcriber.py
+### `core/transcriber.py`
 
-Responsible for speech-to-text.
+Responsible for speech-to-text. Supports English via Whisper and Hinglish via Sarvam AI.
 
-It supports:
+Main functions: `load_model()`, `transcribe_chunk_whisper()`, `transcribe_chunk_sarvam()`, `transcribe_chunk()`, `transcribe_all()`
 
-English → Whisper
-Hinglish → Sarvam AI
+### `core/summarizer.py`
 
-Main functions:
+Responsible for transcript splitting, partial summaries, final summary generation, and meeting title generation. Uses LangChain, Mistral, and LCEL.
 
-load_model()
-transcribe_chunk_whisper()
-transcribe_chunk_sarvam()
-transcribe_chunk()
-transcribe_all()
-core/summarizer.py
+### `core/extractor.py`
 
-Responsible for:
+Responsible for extracting action items, key decisions, and open questions.
 
-Transcript splitting
-Partial summaries
-Final summary generation
-Meeting title generation
+### `core/vector_store.py`
 
-Uses:
+Responsible for creating embeddings, splitting transcript text, creating ChromaDB collections, persisting vectors, and creating retrievers.
 
-LangChain
-Mistral
-LCEL
-core/extractor.py
+Embedding model: `all-MiniLM-L6-v2`
 
-Responsible for extracting:
-
-Action Items
-Key Decisions
-Open Questions
-core/vector_store.py
-
-Responsible for:
-
-Creating embeddings
-Splitting transcript text
-Creating ChromaDB collections
-Persisting vectors
-Creating retrievers
-
-Embedding model:
-
-all-MiniLM-L6-v2
-core/rag_engine.py
+### `core/rag_engine.py`
 
 Responsible for the RAG pipeline.
 
-Main functions:
+Main functions: `build_rag_chain()`, `load_rag_chain()`, `ask_question()`
 
-build_rag_chain()
-load_rag_chain()
-ask_question()
-🛠️ Technology Stack
-Component	Technology
-Programming Language	Python
-UI	Streamlit
-Video Download	yt-dlp
-Audio Processing	PyDub
-Audio Backend	FFmpeg
-Local STT	OpenAI Whisper
-Hindi/Hinglish Translation	Sarvam AI
-LLM	Mistral
-LLM Framework	LangChain
-RAG	LangChain LCEL
-Vector Database	ChromaDB
-Embeddings	HuggingFace Sentence Transformers
-Environment Variables	python-dotenv
-HTTP Requests	Requests
-PDF Support	ReportLab / FPDF2
-⚙️ Requirements
+---
 
-Recommended:
+## 🛠️ Technology Stack
 
-Python 3.10+
+| Component | Technology |
+|---|---|
+| Programming Language | Python |
+| UI | Streamlit |
+| Video Download | yt-dlp |
+| Audio Processing | PyDub |
+| Audio Backend | FFmpeg |
+| Local STT | OpenAI Whisper |
+| Hindi/Hinglish Translation | Sarvam AI |
+| LLM | Mistral |
+| LLM Framework | LangChain |
+| RAG | LangChain LCEL |
+| Vector Database | ChromaDB |
+| Embeddings | HuggingFace Sentence Transformers |
+| Environment Variables | python-dotenv |
+| HTTP Requests | Requests |
+| PDF Support | ReportLab / FPDF2 |
 
-The project dependencies are listed in:
+---
 
-Requirements.txt
-🚀 Installation
-1. Clone the repository
+## ⚙️ Requirements
+
+Recommended: **Python 3.10+**
+
+Project dependencies are listed in `requirements.txt`.
+
+---
+
+## 🚀 Installation
+
+### 1. Clone the repository
+
+```bash
 git clone https://github.com/chetankumar36/VideoMind-AI.git
-
-Enter the project:
-
 cd VideoMind-AI
-2. Create a Virtual Environment
-Windows
+```
+
+### 2. Create a virtual environment (Windows)
+
+```powershell
 python -m venv .venv
-
-Activate it:
-
 .venv\Scripts\Activate.ps1
+```
 
-You should see:
+You should see `(.venv)` or your environment name in the terminal.
 
-(.venv)
-
-or your environment name in the terminal.
-
-📦 Install Dependencies
+### 3. Install dependencies
 
 Using pip:
 
-pip install -r Requirements.txt
+```bash
+pip install -r requirements.txt
+```
 
 Using uv:
 
-uv pip install -r Requirements.txt
-🎧 FFmpeg Installation
+```bash
+uv pip install -r requirements.txt
+```
 
-FFmpeg is required for audio/video processing.
+### 4. Install FFmpeg
 
-Check whether FFmpeg is installed:
+FFmpeg is required for audio/video processing. Check whether it's installed:
 
+```bash
 ffmpeg -version
+```
 
-If it is not installed, install FFmpeg and make sure the FFmpeg executable is available in your system PATH.
+If it is not installed, install FFmpeg and make sure the executable is available on your system PATH. VideoMind AI uses FFmpeg indirectly through PyDub and ffmpeg-python.
 
-VideoMind AI uses FFmpeg indirectly through PyDub and ffmpeg-python.
+---
 
-🔐 Environment Variables
+## 🔐 Environment Variables
 
-Create a file named:
+Create a `.env` file in the project root:
 
-.env
-
-in the project root.
-
-Example:
-
+```env
 MISTRAL_API_KEY=your_mistral_api_key
-
-
 SARVAM_API_KEY=your_sarvam_api_key
-
-
 WHISPER_MODEL=small
-
-
 SARVAM_STT_MODEL=saaras:v2.5
-Required API Keys
+```
 
-For English/local transcription:
+**Required API keys:**
 
-WHISPER_MODEL=small
+| Use case | Variable | Notes |
+|---|---|---|
+| English/local transcription | `WHISPER_MODEL` | No API key required — runs locally |
+| Hinglish/Hindi translation | `SARVAM_API_KEY` | Required for Hinglish mode |
+| Summarization, extraction, RAG | `MISTRAL_API_KEY` | Required |
 
-No transcription API key is required because Whisper runs locally.
+### ⚠️ Security
 
-For Hinglish/Hindi translation:
+- Never commit your `.env` file — it's already excluded via `.gitignore`.
+- Never put API keys directly inside Python source code.
+- If a key is accidentally committed to GitHub, revoke it immediately and generate a new one.
 
-SARVAM_API_KEY=your_sarvam_api_key
+---
 
-For summarization, extraction and RAG:
+## ▶️ Running VideoMind AI
 
-MISTRAL_API_KEY=your_mistral_api_key
-⚠️ Security
-
-Never commit your .env file.
-
-Your .gitignore already excludes:
-
-.env
-
-Never put API keys directly inside Python source code.
-
-If an API key is accidentally committed to GitHub, revoke it immediately and generate a new key.
-
-▶️ Running VideoMind AI
-
-Start the Streamlit application:
-
+```bash
 python -m streamlit run app.py
+```
 
-Or:
+or
 
+```bash
 streamlit run app.py
+```
 
-The application will normally be available at:
+The application will normally be available at `http://localhost:8501`.
 
-http://localhost:8501
-🧪 Running the CLI Pipeline
+---
 
-The project also includes a command-line pipeline.
+## 🧪 Running the CLI Pipeline
 
-Run:
-
+```bash
 python main.py
+```
 
-You will be asked:
+You'll be prompted for:
 
+```
 Enter YouTube URL or local file path:
-
-Then:
-
 Language (english/hinglish):
+```
 
-For example:
+---
 
-Language: english
+## 🧪 Testing
 
-or:
-
-Language: hinglish
-🧪 Testing
-
-The project contains:
-
-test.py
-
-Run:
-
+```bash
 python test.py
+```
 
-The test pipeline processes the configured YouTube URL and generates:
+The test pipeline processes the configured YouTube URL and generates transcript, title, summary, action items, key decisions, and open questions.
 
-Transcript
-Title
-Summary
-Action items
-Key decisions
-Open questions
+> Update the URL in `test.py` before using it for another video.
 
-Update the URL in test.py before using it for another video.
+---
 
-🔄 Complete Processing Pipeline
+## 📊 Configuration Reference
 
-When a user submits a video, the application follows this workflow:
+### Embedding Pipeline
 
-1. User provides YouTube URL / Local File
-                    ↓
-2. Audio extraction
-                    ↓
-3. WAV conversion
-                    ↓
-4. Audio chunking
-                    ↓
-5. Transcription
-                    ↓
-        ┌───────────┴───────────┐
-        ↓                       ↓
-     Whisper                Sarvam AI
-    English                Hinglish
-        │                       │
-        └───────────┬───────────┘
-                    ↓
-              Full Transcript
-                    ↓
-             Mistral Analysis
-                    ↓
-       ┌────────────┼────────────┐
-       ↓            ↓            ↓
-    Summary      Decisions    Actions
-                    │
-                    ↓
-             Open Questions
-                    │
-                    ↓
-             RAG Vector Store
-                    │
-                    ▼
-                ChromaDB
-                    │
-                    ▼
-             User Questions
-                    │
-                    ▼
-                Retriever
-                    │
-                    ▼
-              Relevant Chunks
-                    │
-                    ▼
-                 Mistral
-                    │
-                    ▼
-                 Answer
-🧠 Why RAG?
+```
+Transcript → RecursiveCharacterTextSplitter → 500-char chunks (50-char overlap)
+→ HuggingFace Embeddings → ChromaDB
+```
 
-A meeting transcript can be very long.
+### Mistral Configuration
 
-Instead of sending the entire transcript to the LLM for every question, VideoMind AI stores transcript chunks as vectors.
+The application uses `mistral-small-latest` via `ChatMistralAI`:
 
-When a user asks a question:
-
-"What deadline did the team agree on?"
-
-the system searches ChromaDB for the most relevant transcript chunks.
-
-Only the relevant context is sent to Mistral.
-
-This provides:
-
-More relevant answers
-Lower context usage
-Better scalability for long meetings
-Searchable meeting memory
-Context-grounded answers
-📊 Embedding Pipeline
-
-The current embedding model is:
-
-all-MiniLM-L6-v2
-
-The transcript is processed as:
-
-Transcript
-    ↓
-RecursiveCharacterTextSplitter
-    ↓
-500-character chunks
-    ↓
-50-character overlap
-    ↓
-HuggingFace Embeddings
-    ↓
-ChromaDB
-🧩 Mistral Configuration
-
-The application currently uses:
-
-mistral-small-latest
-
-The model is accessed through:
-
-ChatMistralAI
-
-Example configuration:
-
+```python
 ChatMistralAI(
     model="mistral-small-latest",
     mistral_api_key=os.getenv("MISTRAL_API_KEY"),
     temperature=0.3,
 )
+```
 
-Different temperatures are used for different tasks.
+Different temperatures are used per task:
 
-For example:
+| Task | Temperature |
+|---|---|
+| Summarization | 0.3 |
+| Extraction | 0.2 |
+| RAG | 0.3 |
 
-Summarization: 0.3
-Extraction: 0.2
-RAG: 0.3
-🎙️ Whisper Configuration
+### Whisper Configuration
 
-The default Whisper model is:
+Default model: `small`
 
-small
-
-Change it using:
-
+```env
 WHISPER_MODEL=small
+```
 
-For faster CPU inference:
+- Faster CPU inference: `WHISPER_MODEL=base`
+- Higher quality: `WHISPER_MODEL=medium`
 
-WHISPER_MODEL=base
+> Larger models require significantly more computational resources.
 
-For higher quality:
+### Sarvam Configuration
 
-WHISPER_MODEL=medium
+Default model: `saaras:v2.5`
 
-Larger models require significantly more computational resources.
-
-🌐 Sarvam Configuration
-
-The default Sarvam model is:
-
-saaras:v2.5
-
-Configure it with:
-
+```env
 SARVAM_STT_MODEL=saaras:v2.5
+```
 
-The application currently sends audio to:
+The application sends audio to `https://api.sarvam.ai/speech-to-text-translate`. Audio is split into 25-second pieces to remain below the synchronous API's 30-second limit.
 
-https://api.sarvam.ai/speech-to-text-translate
+---
 
-Audio is split into 25-second pieces to remain below the synchronous API's 30-second limit.
-
-📁 Generated Files
+## 📁 Generated Files
 
 During processing, the application can generate:
 
-downloades/
+- `downloads/` — downloaded YouTube audio and audio chunks
+- `vector_db/` — the RAG vector database
 
-for downloaded YouTube audio.
+> These generated files should not be committed to Git. The repository `.gitignore` excludes generated media and vector database files.
 
-Audio chunks are generated alongside the WAV input.
+---
 
-The RAG database is stored in:
+## 🐛 Troubleshooting
 
-vector_db/
+**Streamlit command not found**
 
-These generated files should not be committed to Git.
-
-The repository .gitignore excludes generated media and vector database files.
-
-⚠️ YouTube Download Issues
-
-YouTube extraction can occasionally fail because YouTube changes its delivery mechanisms.
-
-If yt-dlp reports an error such as:
-
-HTTP Error 403: Forbidden
-
-or:
-
-No supported JavaScript runtime could be found
-
-update yt-dlp:
-
-uv pip install -U "yt-dlp[default]"
-
-Also make sure FFmpeg is installed.
-
-For newer YouTube extraction workflows, a supported JavaScript runtime such as Deno may be required depending on the yt-dlp version and extraction method.
-
-⚠️ CPU Whisper Warning
-
-When Whisper runs on a CPU, you may see:
-
-FP16 is not supported on CPU; using FP32 instead
-
-This is a warning, not a failure.
-
-Whisper automatically uses FP32 on CPU.
-
-For example:
-
-Whisper model loaded.
-FP16 is not supported on CPU; using FP32 instead
-
-means transcription is still working.
-
-🐛 Troubleshooting
-Streamlit command not found
-
-Use:
-
+```bash
 python -m streamlit run app.py
+```
 
-instead of:
+**Mistral API error**
 
-streamlit run app.py
-Mistral API error
+Check that `MISTRAL_API_KEY` is set and valid in `.env`.
 
-Check:
+**Sarvam API error**
 
-MISTRAL_API_KEY=...
+Check that `SARVAM_API_KEY` is set in `.env`. It's required when using Hinglish mode.
 
-and make sure the key is valid.
+**Whisper model download is slow**
 
-Sarvam API error
+The first Whisper execution downloads the selected model — this can take time depending on model size and internet connection.
 
-Check:
-
-SARVAM_API_KEY=...
-
-If using Hinglish mode, the Sarvam API key is required.
-
-Whisper model download
-
-The first Whisper execution downloads the selected model.
-
-This may take some time depending on the model size and internet connection.
-
-ChromaDB problems
+**ChromaDB problems**
 
 Delete the generated local database:
 
-vector_db/
-
-and run the application again.
+```bash
+rm -rf vector_db/
+```
 
 The application will recreate the vector store when processing a new transcript.
 
-🚀 Future Improvements
+**YouTube download issues**
 
-Potential future features include:
+YouTube extraction can occasionally fail because YouTube changes its delivery mechanisms. If yt-dlp reports:
 
-🎤 Real-time meeting transcription
-👥 Speaker diarization
-🗣️ Speaker identification
-🌍 More Indian language support
-📧 Email action items
-📅 Calendar integration
-🔔 Action-item reminders
-📊 Meeting analytics
-🧠 Persistent meeting memory
-🔍 Better semantic search
-🎥 Video scene understanding
-☁️ Cloud deployment
-🔐 User authentication
-👥 Multi-user workspaces
-📱 Mobile-friendly interface
-📄 Improved PDF reports
-⏱️ Timestamp-aware answers
-📝 Transcript editing
-📌 Clickable evidence/citations for RAG answers
-🔮 Planned Architecture
+```
+HTTP Error 403: Forbidden
+```
+
+or
+
+```
+No supported JavaScript runtime could be found
+```
+
+update yt-dlp:
+
+```bash
+uv pip install -U "yt-dlp[default]"
+```
+
+Also make sure FFmpeg is installed. For newer YouTube extraction workflows, a supported JavaScript runtime such as Deno may be required depending on the yt-dlp version and extraction method.
+
+**CPU Whisper warning**
+
+```
+FP16 is not supported on CPU; using FP32 instead
+```
+
+This is a warning, not a failure — Whisper automatically uses FP32 on CPU and transcription still works.
+
+---
+
+## 🧠 Why RAG?
+
+A meeting transcript can be very long. Instead of sending the entire transcript to the LLM for every question, VideoMind AI stores transcript chunks as vectors. When a user asks a question like *"What deadline did the team agree on?"*, the system searches ChromaDB for the most relevant transcript chunks, and only that relevant context is sent to Mistral.
+
+This provides:
+
+- More relevant answers
+- Lower context usage
+- Better scalability for long meetings
+- Searchable meeting memory
+- Context-grounded answers
+
+---
+
+## 🚀 Future Improvements
+
+- 🎤 Real-time meeting transcription
+- 👥 Speaker diarization
+- 🗣️ Speaker identification
+- 🌍 More Indian language support
+- 📧 Email action items
+- 📅 Calendar integration
+- 🔔 Action-item reminders
+- 📊 Meeting analytics
+- 🧠 Persistent meeting memory
+- 🔍 Better semantic search
+- 🎥 Video scene understanding
+- ☁️ Cloud deployment
+- 🔐 User authentication
+- 👥 Multi-user workspaces
+- 📱 Mobile-friendly interface
+- 📄 Improved PDF reports
+- ⏱️ Timestamp-aware answers
+- 📝 Transcript editing
+- 📌 Clickable evidence/citations for RAG answers
+
+### 🔮 Planned Architecture
 
 The long-term goal is to evolve VideoMind AI from a meeting summarizer into a general-purpose AI Video Agent.
 
+```
                     VideoMind AI
                          │
         ┌────────────────┼────────────────┐
@@ -939,113 +697,96 @@ The long-term goal is to evolve VideoMind AI from a meeting summarizer into a ge
       Video            Audio           YouTube
         │                │                │
         └────────────────┼────────────────┘
-                         ↓
+                          ▼
                   Multimodal Input
-                         ↓
+                          ▼
                  Speech / Vision AI
-                         ↓
+                          ▼
                  Video Understanding
-                         ↓
-                 Knowledge Layer
-                         ↓
-              ┌──────────┴──────────┐
-              │                     │
-          Summarization           RAG
-              │                     │
-              ▼                     ▼
-        Meeting Insights       Video Chat
-              │                     │
-              └──────────┬──────────┘
-                         ↓
-                    AI Agent
-                         ↓
+                          ▼
+                  Knowledge Layer
+                          ▼
+              ┌───────────┴───────────┐
+              │                       │
+         Summarization              RAG
+              │                       │
+              ▼                       ▼
+        Meeting Insights         Video Chat
+              │                       │
+              └───────────┬───────────┘
+                           ▼
+                       AI Agent
+                           ▼
               Actions / Decisions /
               Questions / Insights
-📈 Current Project Status
-Status: 🟢 Working
+```
 
-Current implemented capabilities:
+---
 
- YouTube URL input
- Local audio/video input
- YouTube audio extraction
- Audio conversion
- Audio chunking
- Local Whisper transcription
- Hinglish transcription/translation using Sarvam AI
- Mistral integration
- LangChain LCEL
- Automatic meeting title generation
- Meeting summarization
- Action-item extraction
- Key-decision extraction
- Open-question extraction
- ChromaDB vector storage
- HuggingFace embeddings
- RAG pipeline
- Meeting Q&A
- Streamlit UI
- Local vector persistence
- CLI pipeline
-🌟 Why VideoMind AI?
+## 📈 Current Project Status
 
-Most meeting tools stop at transcription.
+**Status: 🟢 Working**
 
-VideoMind AI goes one step further:
+Implemented capabilities:
 
-Video
-  ↓
-Transcription
-  ↓
-Understanding
-  ↓
-Summary
-  ↓
-Decisions
-  ↓
-Action Items
-  ↓
-Knowledge Base
-  ↓
-Ask Questions
+- [x] YouTube URL input
+- [x] Local audio/video input
+- [x] YouTube audio extraction
+- [x] Audio conversion
+- [x] Audio chunking
+- [x] Local Whisper transcription
+- [x] Hinglish transcription/translation using Sarvam AI
+- [x] Mistral integration
+- [x] LangChain LCEL
+- [x] Automatic meeting title generation
+- [x] Meeting summarization
+- [x] Action-item extraction
+- [x] Key-decision extraction
+- [x] Open-question extraction
+- [x] ChromaDB vector storage
+- [x] HuggingFace embeddings
+- [x] RAG pipeline
+- [x] Meeting Q&A
+- [x] Streamlit UI
+- [x] Local vector persistence
+- [x] CLI pipeline
+
+---
+
+## 🌟 Why VideoMind AI?
+
+Most meeting tools stop at transcription. VideoMind AI goes one step further:
+
+```
+Video → Transcription → Understanding → Summary → Decisions
+→ Action Items → Knowledge Base → Ask Questions
+```
 
 Instead of simply reading a transcript, users can interact with their meeting as a searchable knowledge source.
 
-👨‍💻 Project
+---
 
-VideoMind AI
+## 👨‍💻 Project
 
-GitHub:
+**VideoMind AI**
+GitHub: [github.com/chetankumar36/VideoMind-AI](https://github.com/chetankumar36/VideoMind-AI)
 
-https://github.com/chetankumar36/VideoMind-AI
+---
 
-📜 License
+## 📜 License
 
-Add your preferred license before distributing the project publicly.
+Add your preferred license before distributing the project publicly (e.g. MIT License).
 
-For example:
+---
 
-MIT License
-🙌 Acknowledgements
+## 🙌 Acknowledgements
 
 This project is built using several open-source and AI technologies:
 
-OpenAI Whisper
-LangChain
-Mistral AI
-Sarvam AI
-ChromaDB
-HuggingFace
-Streamlit
-yt-dlp
-PyDub
-FFmpeg
-⭐ Star the Repository
+OpenAI Whisper · LangChain · Mistral AI · Sarvam AI · ChromaDB · HuggingFace · Streamlit · yt-dlp · PyDub · FFmpeg
+
+---
+
+## ⭐ Star the Repository
 
 If you find VideoMind AI useful, consider giving the repository a ⭐ on GitHub.
-
-https://github.com/chetankumar36/VideoMind-AI
-
-
-
-
