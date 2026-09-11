@@ -46,6 +46,11 @@ Provide a YouTube URL and VideoMind AI will:
 4. Split long audio into manageable chunks
 5. Send the chunks through the selected transcription pipeline
 
+
+### To Clone 
+
+clone https://github.com/chetankumar36/VideoMind-AI
+
 ### 📁 Local File Processing
 
 VideoMind AI can also process local audio/video files. Supported input depends on the FFmpeg/PyDub codecs available on the system. Typical formats include:
