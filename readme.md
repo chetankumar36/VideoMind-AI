@@ -794,4 +794,4 @@ OpenAI Whisper · LangChain · Mistral AI · Sarvam AI · ChromaDB · HuggingFac
 
 ## ⭐ Star the Repository
 
-If you find VideoMind AI useful, consider giving the repository a ⭐ on GitHub.
+If you find VideoMind AI useful, consider giving the repository a ⭐ on GitHub. thank you guys
